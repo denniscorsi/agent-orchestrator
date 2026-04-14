@@ -108,6 +108,122 @@ test('GET /inbox ignores non-markdown files', async () => {
   expect(res.body).toHaveLength(1);
 });
 
+// ---- POST /inbox tests ----
+
+async function createCompanyMd(content) {
+  await fs.promises.writeFile(path.join(tmpDir, 'COMPANY.md'), content);
+}
+
+const teamTable = [
+  '## Team',
+  '| Agent | Schedule | Role |',
+  '|---|---|---|',
+  '| **Market Researcher** | Weekly (Mondays 8am) | Competitive intelligence |',
+  '| **CFO** | Weekly (Mondays 8am) | Revenue modeling |',
+  '| **Partnerships Scout** | On-demand | Partner identification |',
+].join('\n');
+
+test('POST /inbox returns 400 when required fields are missing', async () => {
+  const res = await request(app).post('/inbox').send({ to: 'cfo' });
+  expect(res.status).toBe(400);
+  expect(res.body.error).toContain('Missing required fields');
+});
+
+test('POST /inbox creates a markdown file with correct format', async () => {
+  await createInboxDir();
+  await createCompanyMd(teamTable);
+
+  const res = await request(app).post('/inbox').send({
+    to: 'cfo',
+    subject: 'Q2 Budget',
+    message: 'Please prepare the Q2 budget review.',
+  });
+  expect(res.status).toBe(201);
+  expect(res.body).toHaveLength(1);
+  expect(res.body[0].to).toBe('CFO');
+  expect(res.body[0].from).toBe('Dennis');
+  expect(res.body[0].subject).toBe('Q2 Budget');
+  expect(res.body[0].body).toContain('Please prepare the Q2 budget review.');
+
+  // Verify file was actually written
+  const dir = path.join(tmpDir, 'shared', 'inbox');
+  const files = await fs.promises.readdir(dir);
+  const match = files.find((f) => f.startsWith('cfo-from-dennis-'));
+  expect(match).toBeDefined();
+});
+
+test('POST /inbox handles date collision with counter suffix', async () => {
+  const dir = await createInboxDir();
+  const today = new Date().toISOString().split('T')[0];
+  await fs.promises.writeFile(
+    path.join(dir, `cfo-from-dennis-${today}.md`),
+    'existing file'
+  );
+
+  await createCompanyMd(teamTable);
+
+  const res = await request(app).post('/inbox').send({
+    to: 'cfo',
+    subject: 'Follow up',
+    message: 'Second message today.',
+  });
+  expect(res.status).toBe(201);
+
+  const files = await fs.promises.readdir(dir);
+  const suffixed = files.find((f) => f.includes(`cfo-from-dennis-${today}-2.md`));
+  expect(suffixed).toBeDefined();
+});
+
+test('POST /inbox broadcasts to all agents when to is "all"', async () => {
+  await createInboxDir();
+  await createCompanyMd(teamTable);
+
+  const res = await request(app).post('/inbox').send({
+    to: 'all',
+    subject: 'Team Update',
+    message: 'Hello everyone.',
+  });
+  expect(res.status).toBe(201);
+  expect(res.body).toHaveLength(3);
+
+  const recipients = res.body.map((m) => m.to).sort();
+  expect(recipients).toEqual(['CFO', 'Market Researcher', 'Partnerships Scout']);
+
+  const dir = path.join(tmpDir, 'shared', 'inbox');
+  const files = await fs.promises.readdir(dir);
+  expect(files).toHaveLength(3);
+});
+
+test('POST /inbox creates inbox directory if it does not exist', async () => {
+  // Don't call createInboxDir — directory shouldn't exist yet
+  await fs.promises.mkdir(path.join(tmpDir, 'shared'), { recursive: true });
+  await createCompanyMd(teamTable);
+
+  const res = await request(app).post('/inbox').send({
+    to: 'cfo',
+    subject: 'Hello',
+    message: 'Test message.',
+  });
+  expect(res.status).toBe(201);
+
+  const dir = path.join(tmpDir, 'shared', 'inbox');
+  const files = await fs.promises.readdir(dir);
+  expect(files).toHaveLength(1);
+});
+
+test('POST /inbox uses slug as display name when COMPANY.md is missing', async () => {
+  await createInboxDir();
+  // No COMPANY.md created
+
+  const res = await request(app).post('/inbox').send({
+    to: 'cfo',
+    subject: 'Ping',
+    message: 'Are you there?',
+  });
+  expect(res.status).toBe(201);
+  expect(res.body[0].to).toBe('cfo');
+});
+
 test('GET /inbox extracts body after --- separator', async () => {
   const dir = await createInboxDir();
   await fs.promises.writeFile(

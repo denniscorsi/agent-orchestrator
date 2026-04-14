@@ -9,9 +9,10 @@ interface SidebarProps {
   activeView: View;
   onSelectAgent: (id: string) => void;
   onSelectView: (view: View) => void;
+  onCompose: () => void;
 }
 
-export default function Sidebar({ agents, activeAgentId, activeView, onSelectAgent, onSelectView }: SidebarProps) {
+export default function Sidebar({ agents, activeAgentId, activeView, onSelectAgent, onSelectView, onCompose }: SidebarProps) {
   return (
     <aside
       data-testid="sidebar"
@@ -57,6 +58,16 @@ export default function Sidebar({ agents, activeAgentId, activeView, onSelectAge
           />
         ))}
       </nav>
+
+      <div className="border-t border-surface-600 p-3">
+        <button
+          data-testid="compose-button"
+          onClick={onCompose}
+          className="w-full rounded-md bg-agent-blue px-4 py-2 text-sm font-semibold text-surface-900 hover:brightness-110 cursor-pointer"
+        >
+          Compose
+        </button>
+      </div>
     </aside>
   );
 }
