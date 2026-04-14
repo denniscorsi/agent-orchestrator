@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface-900: #0f1117;
+  --color-surface-800: #161822;
+  --color-surface-700: #1e2030;
+  --color-surface-600: #282a3a;
+
+  --color-agent-blue: #7c93b8;
+  --color-agent-amber: #c9a84c;
+  --color-agent-teal: #5ba6a6;
+}
+
+body {
+  @apply bg-surface-900 text-gray-200 antialiased;
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
