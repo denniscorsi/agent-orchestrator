@@ -8,3 +8,12 @@ export interface Agent {
 }
 
 export type AgentColor = 'blue' | 'amber' | 'teal';
+
+export interface Report {
+  filename: string;
+  title: string;
+  agent: string;
+  date: string;
+  summary: string;
+  content: string;
+}

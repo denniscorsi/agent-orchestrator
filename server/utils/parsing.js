@@ -37,6 +37,7 @@ function extractSummary(content) {
  */
 function parseReport(filename, content, stats) {
   return {
+    filename,
     title: extractTitle(content, filename),
     agent: extractMetadata(content, 'Author') || extractMetadata(content, 'Agent') || 'Unknown',
     date: extractMetadata(content, 'Date') || stats.mtime.toISOString().split('T')[0],
