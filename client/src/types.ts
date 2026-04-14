@@ -17,3 +17,12 @@ export interface Report {
   summary: string;
   content: string;
 }
+
+export interface InboxMessage {
+  to: string;
+  from: string;
+  date: string;
+  subject: string;
+  body: string;
+  archived: boolean;
+}
