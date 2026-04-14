@@ -142,4 +142,54 @@ describe('App', () => {
       expect(globalThis.fetch).toHaveBeenCalledWith('/agents');
     });
   });
+
+  it('triggers agent run and updates status to running', async () => {
+    mockFetchSuccess();
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Market Researcher')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('run-button-market-researcher'));
+
+    // Verify POST was made to /agents/:id/run
+    expect(globalThis.fetch).toHaveBeenCalledWith('/agents/market-researcher/run', { method: 'POST' });
+
+    // Status badge should show "running"
+    await waitFor(() => {
+      const badge = screen.getByTestId('agent-card-market-researcher').querySelector('[data-testid="status-badge"]');
+      expect(badge).toHaveTextContent('running');
+    });
+  });
+
+  it('resets agent status to idle on run failure', async () => {
+    mockFetchSuccess();
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByText('Market Researcher')).toBeInTheDocument();
+    });
+
+    // Override fetch to fail on the run endpoint
+    const originalMock = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation((url: string, opts?: RequestInit) => {
+      if (url.includes('/run') && opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: false,
+          status: 502,
+          json: () => Promise.resolve({ error: 'Could not reach Cowork API' }),
+        });
+      }
+      return (originalMock as ReturnType<typeof vi.fn>)(url, opts);
+    });
+
+    await user.click(screen.getByTestId('run-button-market-researcher'));
+
+    // After the failed request, status should revert to idle
+    await waitFor(() => {
+      const badge = screen.getByTestId('agent-card-market-researcher').querySelector('[data-testid="status-badge"]');
+      expect(badge).toHaveTextContent('idle');
+    });
+  });
 });

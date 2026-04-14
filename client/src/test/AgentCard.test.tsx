@@ -53,4 +53,42 @@ describe('AgentCard', () => {
     render(<AgentCard agent={agentNoStatus} isActive={false} onClick={() => {}} />);
     expect(screen.getByTestId('status-badge')).toHaveTextContent('idle');
   });
+
+  it('renders "Run now" button', () => {
+    render(<AgentCard agent={mockAgent} isActive={false} onClick={() => {}} onRun={() => {}} />);
+    expect(screen.getByTestId('run-button-market-researcher')).toHaveTextContent('Run now');
+  });
+
+  it('calls onRun with agent id when "Run now" is clicked', async () => {
+    const user = userEvent.setup();
+    const handleRun = vi.fn();
+    render(<AgentCard agent={mockAgent} isActive={false} onClick={() => {}} onRun={handleRun} />);
+    await user.click(screen.getByTestId('run-button-market-researcher'));
+    expect(handleRun).toHaveBeenCalledWith('market-researcher');
+  });
+
+  it('"Run now" click does not trigger card onClick (stopPropagation)', async () => {
+    const user = userEvent.setup();
+    const handleClick = vi.fn();
+    const handleRun = vi.fn();
+    render(<AgentCard agent={mockAgent} isActive={false} onClick={handleClick} onRun={handleRun} />);
+    await user.click(screen.getByTestId('run-button-market-researcher'));
+    expect(handleRun).toHaveBeenCalledOnce();
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+
+  it('shows "Running\u2026" when agent status is running', () => {
+    const runningAgent = { ...mockAgent, status: 'running' as const };
+    render(<AgentCard agent={runningAgent} isActive={false} onClick={() => {}} onRun={() => {}} />);
+    expect(screen.getByTestId('run-button-market-researcher')).toHaveTextContent('Running\u2026');
+  });
+
+  it('does not call onRun when agent is running', async () => {
+    const user = userEvent.setup();
+    const handleRun = vi.fn();
+    const runningAgent = { ...mockAgent, status: 'running' as const };
+    render(<AgentCard agent={runningAgent} isActive={false} onClick={() => {}} onRun={handleRun} />);
+    await user.click(screen.getByTestId('run-button-market-researcher'));
+    expect(handleRun).not.toHaveBeenCalled();
+  });
 });

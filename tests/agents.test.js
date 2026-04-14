@@ -140,3 +140,95 @@ test('GET /agents/:id/memory returns correct content for each agent', async () =
   const psRes = await request(app).get('/agents/partnerships-scout/memory');
   expect(psRes.body.content).toContain('ChainBridge is top priority');
 });
+
+test('POST /agents/:id/run returns 404 when agent does not exist', async () => {
+  const res = await request(app).post('/agents/nonexistent/run');
+  expect(res.status).toBe(404);
+  expect(res.body.error).toContain('nonexistent');
+});
+
+test('POST /agents/:id/run returns 502 when Cowork API is unreachable', async () => {
+  await setupAgents();
+
+  // Default COWORK_API_URL (localhost:3000) won't be running in tests
+  const res = await request(app).post('/agents/market-researcher/run');
+  expect(res.status).toBe(502);
+  expect(res.body.error).toBe('Could not reach Cowork API');
+  expect(res.body.detail).toBeTruthy();
+});
+
+test('POST /agents/:id/run proxies to Cowork API and returns success', async () => {
+  await setupAgents();
+
+  // Mock global fetch to simulate a successful Cowork API response
+  const originalFetch = global.fetch;
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ status: 'triggered', taskId: 'market-researcher' }),
+  });
+
+  try {
+    const res = await request(app).post('/agents/market-researcher/run');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('triggered');
+    expect(res.body.agentId).toBe('market-researcher');
+    expect(res.body.cowork).toEqual({ status: 'triggered', taskId: 'market-researcher' });
+
+    // Verify fetch was called with the correct URL
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/triggers/market-researcher/run'),
+      expect.objectContaining({ method: 'POST' })
+    );
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('POST /agents/:id/run returns 502 when Cowork API returns an error', async () => {
+  await setupAgents();
+
+  const originalFetch = global.fetch;
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    status: 500,
+    text: () => Promise.resolve('Internal Server Error'),
+  });
+
+  try {
+    const res = await request(app).post('/agents/market-researcher/run');
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe('Cowork API returned an error');
+    expect(res.body.status).toBe(500);
+    expect(res.body.detail).toBe('Internal Server Error');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('POST /agents/:id/run uses COWORK_API_URL environment variable', async () => {
+  await setupAgents();
+
+  const originalFetch = global.fetch;
+  const originalEnv = process.env.COWORK_API_URL;
+  process.env.COWORK_API_URL = 'http://custom-cowork:8080';
+
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ status: 'triggered', taskId: 'cfo' }),
+  });
+
+  try {
+    await request(app).post('/agents/cfo/run');
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://custom-cowork:8080/api/triggers/cfo/run',
+      expect.any(Object)
+    );
+  } finally {
+    global.fetch = originalFetch;
+    if (originalEnv === undefined) {
+      delete process.env.COWORK_API_URL;
+    } else {
+      process.env.COWORK_API_URL = originalEnv;
+    }
+  }
+});
