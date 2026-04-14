@@ -73,6 +73,56 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * POST /agents/:id/run — trigger an agent run via the Cowork API.
+ *
+ * Cowork API contract (assumed, pending confirmation):
+ *   POST {COWORK_API_URL}/api/triggers/{taskId}/run
+ *   Request: { agentId: string }
+ *   Response: { status: 'triggered', taskId: string }
+ *
+ * Environment variables:
+ *   COWORK_API_URL — Base URL for the Cowork service (default: http://localhost:3000)
+ */
+router.post('/:id/run', async (req, res) => {
+  const agentId = req.params.id;
+
+  // Verify agent exists
+  const agentDir = path.join(req.companyDir, 'agents', agentId);
+  try {
+    await fs.access(agentDir);
+  } catch {
+    return res.status(404).json({ error: `Agent '${agentId}' not found` });
+  }
+
+  const coworkUrl = process.env.COWORK_API_URL || 'http://localhost:3000';
+  const triggerUrl = `${coworkUrl}/api/triggers/${agentId}/run`;
+
+  try {
+    const response = await fetch(triggerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      return res.status(502).json({
+        error: 'Cowork API returned an error',
+        status: response.status,
+        detail: body,
+      });
+    }
+
+    const data = await response.json();
+    res.json({ status: 'triggered', agentId, cowork: data });
+  } catch (err) {
+    res.status(502).json({
+      error: 'Could not reach Cowork API',
+      detail: err.message,
+    });
+  }
+});
+
+/**
  * GET /agents/:id/memory — return the agent's memory.md content.
  */
 router.get('/:id/memory', async (req, res) => {

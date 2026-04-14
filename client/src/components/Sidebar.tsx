@@ -7,12 +7,15 @@ interface SidebarProps {
   agents: Agent[];
   activeAgentId: string | null;
   activeView: View;
+  newReportCount?: number;
+  newMessageCount?: number;
   onSelectAgent: (id: string) => void;
   onSelectView: (view: View) => void;
   onCompose: () => void;
+  onRunAgent?: (agentId: string) => void;
 }
 
-export default function Sidebar({ agents, activeAgentId, activeView, onSelectAgent, onSelectView, onCompose }: SidebarProps) {
+export default function Sidebar({ agents, activeAgentId, activeView, newReportCount = 0, newMessageCount = 0, onSelectAgent, onSelectView, onCompose, onRunAgent }: SidebarProps) {
   return (
     <aside
       data-testid="sidebar"
@@ -34,6 +37,11 @@ export default function Sidebar({ agents, activeAgentId, activeView, onSelectAge
           }`}
         >
           Reports
+          {newReportCount > 0 && (
+            <span data-testid="report-badge" className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-agent-blue/20 px-1.5 text-xs font-semibold text-agent-blue">
+              {newReportCount}
+            </span>
+          )}
         </button>
         <button
           data-testid="nav-inbox"
@@ -45,6 +53,11 @@ export default function Sidebar({ agents, activeAgentId, activeView, onSelectAge
           }`}
         >
           Inbox
+          {newMessageCount > 0 && (
+            <span data-testid="inbox-badge" className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-agent-blue/20 px-1.5 text-xs font-semibold text-agent-blue">
+              {newMessageCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -55,6 +68,7 @@ export default function Sidebar({ agents, activeAgentId, activeView, onSelectAge
             agent={agent}
             isActive={agent.id === activeAgentId}
             onClick={() => onSelectAgent(agent.id)}
+            onRun={onRunAgent}
           />
         ))}
       </nav>

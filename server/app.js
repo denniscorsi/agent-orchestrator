@@ -4,6 +4,7 @@ const path = require('path');
 const reportsRouter = require('./routes/reports');
 const inboxRouter = require('./routes/inbox');
 const agentsRouter = require('./routes/agents');
+const events = require('./routes/events');
 
 function createApp(companyDir) {
   const app = express();
@@ -18,6 +19,7 @@ function createApp(companyDir) {
   app.use('/reports', reportsRouter);
   app.use('/inbox', inboxRouter);
   app.use('/agents', agentsRouter);
+  app.use('/events', events.createRouter());
 
   // Serve frontend static files from client/dist
   const clientDist = path.join(__dirname, '..', 'client', 'dist');

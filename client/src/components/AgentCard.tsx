@@ -7,9 +7,10 @@ interface AgentCardProps {
   agent: Agent;
   isActive: boolean;
   onClick: () => void;
+  onRun?: (agentId: string) => void;
 }
 
-export default function AgentCard({ agent, isActive, onClick }: AgentCardProps) {
+export default function AgentCard({ agent, isActive, onClick, onRun }: AgentCardProps) {
   const color = getAgentColor(agent.id);
   const accent = accentClasses[color];
   const status = agent.status ?? 'idle';
@@ -30,6 +31,23 @@ export default function AgentCard({ agent, isActive, onClick }: AgentCardProps) 
       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
         <span>{agent.schedule}</span>
         <span>{relativeTime(agent.lastRunTime)}</span>
+      </div>
+      <div className="mt-2 flex justify-end">
+        <span
+          role="button"
+          tabIndex={0}
+          data-testid={`run-button-${agent.id}`}
+          onClick={(e) => { e.stopPropagation(); if (status !== 'running' && onRun) onRun(agent.id); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); if (status !== 'running' && onRun) onRun(agent.id); } }}
+          aria-disabled={status === 'running'}
+          className={`text-xs px-2 py-0.5 rounded transition-colors ${
+            status === 'running'
+              ? 'text-gray-500 cursor-not-allowed'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-surface-600 cursor-pointer'
+          }`}
+        >
+          {status === 'running' ? 'Running\u2026' : 'Run now'}
+        </span>
       </div>
     </button>
   );

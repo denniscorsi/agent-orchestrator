@@ -10,6 +10,7 @@ export default defineConfig({
       '/agents': 'http://localhost:4001',
       '/reports': 'http://localhost:4001',
       '/inbox': 'http://localhost:4001',
+      '/events': 'http://localhost:4001',
     },
   },
   test: {

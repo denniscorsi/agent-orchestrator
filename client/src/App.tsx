@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAgents } from './useAgents';
+import { useSSE } from './useSSE';
 import Sidebar from './components/Sidebar';
 import type { View } from './components/Sidebar';
 import AgentDetail from './components/AgentDetail';
@@ -8,10 +9,19 @@ import InboxFeed from './components/InboxFeed';
 import MessageComposer from './components/MessageComposer';
 
 function App() {
-  const { agents, loading, error } = useAgents();
+  const { agents, loading, error, setAgentStatus } = useAgents();
+  const {
+    newReportCount,
+    newMessageCount,
+    clearReportBadge,
+    clearMessageBadge,
+    reportRefreshKey,
+    messageRefreshKey,
+  } = useSSE();
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('reports');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerPrefillTo, setComposerPrefillTo] = useState<string | undefined>(undefined);
   const [inboxKey, setInboxKey] = useState(0);
 
   const activeAgent = agents.find((a) => a.id === activeAgentId);
@@ -19,16 +29,51 @@ function App() {
   function handleSelectView(view: View) {
     setActiveView(view);
     setActiveAgentId(null);
+    if (view === 'reports') clearReportBadge();
+    if (view === 'inbox') clearMessageBadge();
   }
 
   function handleMessageSent() {
     setInboxKey((k) => k + 1);
   }
 
+  function handleComposeFromAgent(prefillTo: string) {
+    setComposerPrefillTo(prefillTo);
+    setComposerOpen(true);
+  }
+
+  function handleCloseComposer() {
+    setComposerOpen(false);
+    setComposerPrefillTo(undefined);
+  }
+
+  async function handleRunAgent(agentId: string) {
+    setAgentStatus(agentId, 'running');
+    try {
+      const res = await fetch(`/agents/${agentId}/run`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      // Keep running status — the agent is now running in the background.
+      // Reset to idle after a timeout since we don't have real-time status updates yet.
+      setTimeout(() => setAgentStatus(agentId, 'idle'), 30000);
+    } catch (err) {
+      setAgentStatus(agentId, 'idle');
+      console.error('Failed to trigger agent:', err);
+    }
+  }
+
   function mainContent() {
-    if (activeAgentId) return <AgentDetail agent={activeAgent} />;
-    if (activeView === 'inbox') return <InboxFeed key={inboxKey} />;
-    return <ReportsFeed />;
+    if (activeAgentId) return (
+      <AgentDetail
+        agent={activeAgent}
+        onBack={() => setActiveAgentId(null)}
+        onCompose={handleComposeFromAgent}
+      />
+    );
+    if (activeView === 'inbox') return <InboxFeed key={`${inboxKey}-${messageRefreshKey}`} />;
+    return <ReportsFeed key={reportRefreshKey} />;
   }
 
   return (
@@ -37,9 +82,12 @@ function App() {
         agents={agents}
         activeAgentId={activeAgentId}
         activeView={activeView}
+        newReportCount={newReportCount}
+        newMessageCount={newMessageCount}
         onSelectAgent={setActiveAgentId}
         onSelectView={handleSelectView}
-        onCompose={() => setComposerOpen(true)}
+        onCompose={() => { setComposerPrefillTo(undefined); setComposerOpen(true); }}
+        onRunAgent={handleRunAgent}
       />
 
       <main className="flex-1 overflow-y-auto bg-surface-900">
@@ -59,10 +107,12 @@ function App() {
       </main>
 
       <MessageComposer
+        key={composerPrefillTo ?? 'composer'}
         agents={agents}
         open={composerOpen}
-        onClose={() => setComposerOpen(false)}
+        onClose={handleCloseComposer}
         onSent={handleMessageSent}
+        prefillTo={composerPrefillTo}
       />
     </div>
   );

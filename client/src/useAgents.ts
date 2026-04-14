@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Agent } from './types';
 
 export function useAgents() {
@@ -30,5 +30,9 @@ export function useAgents() {
     return () => { cancelled = true; };
   }, []);
 
-  return { agents, loading, error };
+  const setAgentStatus = useCallback((agentId: string, status: Agent['status']) => {
+    setAgents(prev => prev.map(a => a.id === agentId ? { ...a, status } : a));
+  }, []);
+
+  return { agents, loading, error, setAgentStatus };
 }
