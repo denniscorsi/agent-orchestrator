@@ -1,0 +1,10 @@
+export interface Agent {
+  id: string;
+  name: string;
+  role: string;
+  schedule: string;
+  lastRunTime: string | null;
+  status?: 'idle' | 'running' | 'needs attention';
+}
+
+export type AgentColor = 'blue' | 'amber' | 'teal';
