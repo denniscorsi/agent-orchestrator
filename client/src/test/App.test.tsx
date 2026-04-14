@@ -28,9 +28,17 @@ const mockAgents: Agent[] = [
 ];
 
 function mockFetchSuccess() {
-  globalThis.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve(mockAgents),
+  globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+    if (url === '/reports') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(mockAgents),
+    });
   });
 }
 

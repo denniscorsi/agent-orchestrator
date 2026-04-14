@@ -60,6 +60,7 @@ test('GET /reports returns report with metadata parsed from content', async () =
   expect(res.body).toHaveLength(1);
 
   const report = res.body[0];
+  expect(report.filename).toBe('test-report.md');
   expect(report.title).toBe('Weekly Market Update');
   expect(report.agent).toBe('Market Researcher');
   expect(report.date).toBe('2026-04-01');
