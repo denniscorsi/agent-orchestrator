@@ -3,6 +3,31 @@ import userEvent from '@testing-library/user-event';
 import App from '../App';
 import type { Agent } from '../types';
 
+// Mock EventSource for useSSE hook
+class MockEventSource {
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  close = vi.fn();
+  addEventListener = vi.fn();
+  removeEventListener = vi.fn();
+  readyState = 0;
+  url = '';
+  withCredentials = false;
+  CONNECTING = 0;
+  OPEN = 1;
+  CLOSED = 2;
+  dispatchEvent = vi.fn(() => true);
+  onopen: ((event: Event) => void) | null = null;
+}
+
+beforeAll(() => {
+  (globalThis as Record<string, unknown>).EventSource = MockEventSource;
+});
+
+afterAll(() => {
+  delete (globalThis as Record<string, unknown>).EventSource;
+});
+
 const mockAgents: Agent[] = [
   {
     id: 'market-researcher',
@@ -33,6 +58,18 @@ function mockFetchSuccess() {
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve([]),
+      });
+    }
+    if (url === '/inbox') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+    }
+    if (url.match(/\/agents\/[^/]+\/memory/)) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: '# Memory' }),
       });
     }
     return Promise.resolve({
