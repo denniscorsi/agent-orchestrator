@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     return res.json([]);
   }
 
-  const mdFiles = files.filter(f => f.endsWith('.md'));
+  const mdFiles = files.filter(f => f.endsWith('.md') && f.toLowerCase() !== 'readme.md');
 
   const messages = await Promise.all(
     mdFiles.map(async (filename) => {

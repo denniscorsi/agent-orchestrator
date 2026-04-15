@@ -178,10 +178,10 @@ describe('App', () => {
         return Promise.resolve({
           ok: false,
           status: 502,
-          json: () => Promise.resolve({ error: 'Could not reach Cowork API' }),
+          json: () => Promise.resolve({ error: 'Routines API returned an error' }),
         });
       }
-      return (originalMock as ReturnType<typeof vi.fn>)(url, opts);
+      return (originalMock as (...args: unknown[]) => unknown)(url, opts);
     });
 
     await user.click(screen.getByTestId('run-button-market-researcher'));

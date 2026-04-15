@@ -359,7 +359,7 @@ describe('AgentDetail', () => {
 
   it('renders memory section with accent border', async () => {
     mockFetchAll();
-    const { container } = render(<AgentDetail agent={mockAgent} onBack={() => {}} onCompose={() => {}} />);
+    render(<AgentDetail agent={mockAgent} onBack={() => {}} onCompose={() => {}} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('memory-markdown')).toBeInTheDocument();

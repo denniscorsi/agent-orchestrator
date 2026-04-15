@@ -1,0 +1,14 @@
+{
+  "market-researcher": {
+    "triggerId": "trig_01EXAMPLE...",
+    "token": "sk-ant-oat01-EXAMPLE..."
+  },
+  "cfo": {
+    "triggerId": "trig_01EXAMPLE...",
+    "token": "sk-ant-oat01-EXAMPLE..."
+  },
+  "partnerships-scout": {
+    "triggerId": "trig_01EXAMPLE...",
+    "token": "sk-ant-oat01-EXAMPLE..."
+  }
+}

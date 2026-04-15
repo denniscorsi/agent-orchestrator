@@ -87,6 +87,9 @@ function parseFilenameSender(filename) {
 /**
  * Parse the team table from COMPANY.md content.
  * Returns an array of { name, role, schedule, slug }.
+ *
+ * Detects column order from the header row so it works regardless of
+ * whether the table is Agent|Schedule|Role or Agent|Role|Schedule|…
  */
 function parseTeamTable(content) {
   const lines = content.split('\n');
@@ -94,6 +97,7 @@ function parseTeamTable(content) {
 
   let inTable = false;
   let headerPassed = false;
+  let columnMap = {};
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -106,6 +110,12 @@ function parseTeamTable(content) {
     if (!inTable) {
       if (/\|\s*Agent\s*\|/i.test(trimmed)) {
         inTable = true;
+        // Build column index from header cells
+        const headers = trimmed
+          .split('|')
+          .map(c => c.trim().toLowerCase())
+          .filter(c => c.length > 0);
+        headers.forEach((h, i) => { columnMap[h] = i; });
         continue;
       }
       continue;
@@ -125,9 +135,13 @@ function parseTeamTable(content) {
       .filter(c => c.length > 0);
 
     if (cells.length >= 3) {
-      const name = cells[0].replace(/\*\*/g, '').trim();
-      const schedule = cells[1].trim();
-      const role = cells[2].trim();
+      const nameIdx = columnMap['agent'] ?? 0;
+      const roleIdx = columnMap['role'] ?? 1;
+      const scheduleIdx = columnMap['schedule'] ?? 2;
+
+      const name = (cells[nameIdx] || '').replace(/\*\*/g, '').trim();
+      const role = (cells[roleIdx] || '').trim();
+      const schedule = (cells[scheduleIdx] || '').trim();
       agents.push({
         name,
         role,

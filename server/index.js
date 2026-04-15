@@ -2,7 +2,7 @@ const path = require('path');
 const createApp = require('./app');
 const events = require('./routes/events');
 
-const companyDir = process.env.COMPANY_DIR || path.join(__dirname, '..', 'company');
+const companyDir = process.env.COMPANY_DIR || '/Users/denniscorsi/Documents/Claude/Projects/Tether/company';
 const PORT = process.env.PORT || 4001;
 
 const app = createApp(companyDir);

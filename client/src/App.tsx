@@ -51,9 +51,13 @@ function App() {
     setAgentStatus(agentId, 'running');
     try {
       const res = await fetch(`/agents/${agentId}/run`, { method: 'POST' });
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
         throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      // Log the session URL for debugging — eventually could link to it in the UI.
+      if (data?.sessionUrl) {
+        console.log(`Routine triggered: ${data.sessionUrl}`);
       }
       // Keep running status — the agent is now running in the background.
       // Reset to idle after a timeout since we don't have real-time status updates yet.

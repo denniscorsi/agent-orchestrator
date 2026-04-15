@@ -73,15 +73,14 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * POST /agents/:id/run — trigger an agent run via the Cowork API.
+ * POST /agents/:id/run — trigger an agent run via the Claude Routines API.
  *
- * Cowork API contract (assumed, pending confirmation):
- *   POST {COWORK_API_URL}/api/triggers/{taskId}/run
- *   Request: { agentId: string }
- *   Response: { status: 'triggered', taskId: string }
+ * Routines API:
+ *   POST https://api.anthropic.com/v1/claude_code/routines/{triggerId}/fire
+ *   Headers: Authorization: Bearer {token}, anthropic-beta, anthropic-version
+ *   Response: { type: "routine_fire", claude_code_session_id, claude_code_session_url }
  *
- * Environment variables:
- *   COWORK_API_URL — Base URL for the Cowork service (default: http://localhost:3000)
+ * Credentials are stored per-agent in routines.json (gitignored).
  */
 router.post('/:id/run', async (req, res) => {
   const agentId = req.params.id;
@@ -94,29 +93,58 @@ router.post('/:id/run', async (req, res) => {
     return res.status(404).json({ error: `Agent '${agentId}' not found` });
   }
 
-  const coworkUrl = process.env.COWORK_API_URL || 'http://localhost:3000';
-  const triggerUrl = `${coworkUrl}/api/triggers/${agentId}/run`;
+  // Load routine config for this agent
+  const routinesPath = path.join(__dirname, '..', '..', 'routines.json');
+  let routineConfig;
+  try {
+    const raw = await fs.readFile(routinesPath, 'utf-8');
+    const routines = JSON.parse(raw);
+    routineConfig = routines[agentId];
+  } catch {
+    return res.status(500).json({
+      error: 'Could not read routines.json config',
+    });
+  }
+
+  if (!routineConfig || !routineConfig.triggerId || !routineConfig.token) {
+    return res.status(422).json({
+      error: `No routine configured for agent '${agentId}'`,
+      detail: 'Add triggerId and token to routines.json. See routines.example.json.',
+    });
+  }
+
+  const triggerUrl = `https://api.anthropic.com/v1/claude_code/routines/${routineConfig.triggerId}/fire`;
 
   try {
     const response = await fetch(triggerUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${routineConfig.token}`,
+        'Content-Type': 'application/json',
+        'anthropic-beta': 'experimental-cc-routine-2026-04-01',
+        'anthropic-version': '2023-06-01',
+      },
     });
 
     if (!response.ok) {
       const body = await response.text();
       return res.status(502).json({
-        error: 'Cowork API returned an error',
+        error: 'Routines API returned an error',
         status: response.status,
         detail: body,
       });
     }
 
     const data = await response.json();
-    res.json({ status: 'triggered', agentId, cowork: data });
+    res.json({
+      status: 'triggered',
+      agentId,
+      sessionId: data.claude_code_session_id,
+      sessionUrl: data.claude_code_session_url,
+    });
   } catch (err) {
     res.status(502).json({
-      error: 'Could not reach Cowork API',
+      error: 'Could not reach Routines API',
       detail: err.message,
     });
   }
